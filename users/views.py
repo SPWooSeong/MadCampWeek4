@@ -27,7 +27,7 @@ def google_login_callback(request):
             profile_picture = idinfo.get('picture')
 
             # 사용자 정보를 데이터베이스에 저장 또는 업데이트
-            user, created = User.objects.update_or_create(
+            user, created = User.objects.get_or_create(
                 google_account=email,
                 defaults={
                     'nickname': username,
