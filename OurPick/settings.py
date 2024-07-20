@@ -36,7 +36,6 @@ GOOGLE_CLIENT_ID=env.str('GOOGLE_CLIENT_ID')
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = env.bool('DEBUG')
 
-ALLOWED_HOSTS = ['localhost', '127.0.0.1']
 
 
 # Application definition
