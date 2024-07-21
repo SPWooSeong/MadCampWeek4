@@ -1,5 +1,5 @@
 import json
-from django.http import HttpResponse, JsonResponse
+from django.http import HttpResponse, JsonResponse, HttpResponseBadRequest
 from django.views.decorators.csrf import csrf_exempt
 from google.oauth2 import id_token
 from google.auth.transport import requests
@@ -44,3 +44,52 @@ def google_login_callback(request):
             return JsonResponse({'error': 'Invalid token'}, status=400)
 
     return JsonResponse({'error': 'Invalid request'}, status=400)
+
+@csrf_exempt
+def get_user_profile(request):
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body.decode('utf-8'))
+            google_account = data.get('google_account')
+            
+            if not google_account:
+                return HttpResponseBadRequest('google_account is required.')
+            
+            try:
+                user = User.objects.get(google_account=google_account)
+                response_data = {
+                    'profile_image_url': user.profile_image_url,
+                    'nickname': user.nickname,
+                }
+                return JsonResponse(response_data, status=200)
+            except User.DoesNotExist:
+                return JsonResponse({'error': 'User not found'}, status=404)
+        
+        except json.JSONDecodeError:
+            return HttpResponseBadRequest('Invalid JSON')
+
+    return HttpResponseBadRequest('Only POST method is allowed')
+
+@csrf_exempt  # Use this decorator to exempt the view from CSRF verification
+def update_nickname(request):
+    if request.method == 'PUT':
+        try:
+            data = json.loads(request.body)
+            google_account = data.get('google_account')
+            new_nickname = data.get('nickname')
+            
+            if not google_account or not new_nickname:
+                return HttpResponseBadRequest('google_account and nickname are required.')
+            
+            try:
+                user = User.objects.get(google_account=google_account)
+                user.nickname = new_nickname
+                user.save()
+                return JsonResponse({'message': 'Nickname updated successfully'}, status=200)
+            except User.DoesNotExist:
+                return JsonResponse({'error': 'User not found'}, status=404)
+        
+        except json.JSONDecodeError:
+            return HttpResponseBadRequest('Invalid JSON')
+    
+    return HttpResponseBadRequest('Only PUT methods are allowed')
