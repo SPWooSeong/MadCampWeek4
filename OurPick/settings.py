@@ -44,6 +44,8 @@ DEBUG = env.bool('DEBUG')
 # Application definition
 
 INSTALLED_APPS = [
+    'channels',
+    'daphne',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -143,4 +145,12 @@ CORS_ALLOWED_ORIGINS = [
     'http://localhost:3000'
 ]
 
-
+ASGI_APPLICATION = 'OurPick.asgi.application'
+CHANNEL_LAYERS = {
+    'default': {
+        'BACKEND': 'channels_redis.core.RedisChannelLayer',
+        'CONFIG': {
+            "hosts": [('127.0.0.1', 6379)],  # Adjust to your Redis server configuration
+        },
+    }
+}
