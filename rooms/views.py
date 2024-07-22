@@ -49,4 +49,4 @@ def make_room(request):
         max_people=max_people
     )
     
-    return HttpResponse("Room created successfully.")
+    return JsonResponse({'status': 'success', 'room_id': room.room_id})
