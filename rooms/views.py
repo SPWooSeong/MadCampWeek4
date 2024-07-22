@@ -1,5 +1,10 @@
+import json
 from django.http import HttpResponse, JsonResponse
+from subjects.models import Subject
+from users.models import User
 from rooms.models import Room
+from django.views.decorators.csrf import csrf_exempt
+
 
 # Create your views here.
 def index(request):
@@ -25,3 +30,23 @@ def current_room(request):
         rooms_info.append(room_data)
 
     return JsonResponse(rooms_info, safe=False)
+
+@csrf_exempt
+def make_room(request):
+    # POST 요청으로 전달된 데이터를 가져옴
+    data = json.loads(request.body)
+    google_account = data.get('google_account')
+    room_title = data.get('room_title')
+    subject_id = data.get('subject_id')
+    max_people = data.get('max_people')
+    user = User.objects.get(google_account=google_account)
+    subject = Subject.objects.get(subject_id=subject_id)
+
+    room = Room.objects.create(
+        google_account=user,
+        room_title=room_title,
+        subject_id=subject,
+        max_people=max_people
+    )
+    
+    return HttpResponse("Room created successfully.")
