@@ -1,6 +1,8 @@
+import random
 from django.shortcuts import render
 from django.http import HttpResponse, JsonResponse
 
+from rooms.models import Room
 from subjects.models import Element, Subject
 
 # Create your views here.
@@ -52,3 +54,30 @@ def subject_list(request):
         })
     
     return JsonResponse(subjects_data, safe=False)
+
+def elements(request, room_id):
+    # Room 객체 가져오기
+    room = Room.objects.get(room_id=room_id)
+    
+    # Room의 subject_id 가져오기
+    subject_id = room.subject_id.subject_id
+    
+    # Room의 is_started 필드 업데이트
+    room.is_started = True
+    room.save()
+    
+    # 해당 subject_id를 가진 Element 필터링
+    elements = list(Element.objects.filter(subject_id=subject_id))
+    
+    # 리스트를 랜덤하게 섞기
+    random.shuffle(elements)
+    
+    # Element 객체를 JSON으로 직렬화
+    elements_data = [{
+        'element_id': element.element_id,
+        'element_name': element.element_name,
+        'element_image': element.element_image.url,
+        'num_won': element.num_won
+    } for element in elements]
+    
+    return JsonResponse(elements_data, safe=False)
