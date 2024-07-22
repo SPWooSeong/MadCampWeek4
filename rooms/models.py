@@ -8,7 +8,7 @@ class Room(models.Model):
     room_title = models.CharField(max_length=255, blank=False,null=False, default='')
     subject_id = models.ForeignKey(Subject, on_delete=models.CASCADE)
     max_people = models.IntegerField(null=False)
-    current_people = models.IntegerField(default=1,null=False)
+    current_people = models.IntegerField(default=0,null=False)
     is_started = models.BooleanField(default=False,null=False)
 
     def __str__(self):
