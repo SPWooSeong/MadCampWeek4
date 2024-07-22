@@ -40,3 +40,15 @@ def element_ranking(request, subject_id):
         return JsonResponse(elements_data, safe=False)
     except :
         return JsonResponse([], safe=False)
+    
+def subject_list(request):
+    subjects = Subject.objects.all()
+    
+    subjects_data = []
+    for subject in subjects:
+        subjects_data.append({
+            'subject_id': subject.subject_id,
+            'subject_name': subject.subject_name,
+        })
+    
+    return JsonResponse(subjects_data, safe=False)
