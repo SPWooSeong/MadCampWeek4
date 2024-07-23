@@ -7,7 +7,7 @@ class Subject(models.Model):
     num_used = models.IntegerField(default=0,null=False)
 
     def __str__(self):
-        return self.subject_id
+        return str(self.subject_id)
 
 class Element(models.Model):
     element_id = models.AutoField(primary_key=True,null=False)
@@ -17,4 +17,4 @@ class Element(models.Model):
     num_won = models.IntegerField(default=0,null=False)
 
     def __str__(self):
-        return self.element_id
+        return str(self.element_id)
