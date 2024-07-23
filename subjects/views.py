@@ -1,7 +1,9 @@
+import json
 import random
 from django.shortcuts import get_object_or_404
 from django.http import HttpResponse, JsonResponse
 from django.views.decorators.http import require_http_methods
+from django.views.decorators.csrf import csrf_exempt
 
 from rooms.models import Room
 from subjects.models import Element, Subject
@@ -100,3 +102,19 @@ def increment_element_win(request, element_id):
     }
     
     return JsonResponse(response_data, status=200)
+
+@csrf_exempt
+def new_subject(request):
+    data = json.loads(request.POST['data'])
+    # 주제 생성
+    subject_name = data.get('subject_name')
+    subject = Subject(subject_name=subject_name)
+    subject.save()
+    # 요소 생성
+    elements = data.get('elements', [])
+    for i, element in enumerate(elements):
+        element_name = element.get('element_name')
+        element_image = request.FILES.get(f'element_image_{i}')
+        Element.objects.create(subject_id=subject, element_name=element_name, element_image=element_image)
+
+    return JsonResponse({'message': 'Subject and elements created successfully'}, status=201)
