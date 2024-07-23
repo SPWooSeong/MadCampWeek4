@@ -45,9 +45,12 @@
 import json
 from channels.generic.websocket import AsyncWebsocketConsumer
 from channels.db import database_sync_to_async
+
+from users.models import User
 from .models import Room
 from subjects.models import Element
 import random
+from urllib.parse import parse_qs
 
 class RoomConsumer(AsyncWebsocketConsumer):
     async def connect(self):
@@ -58,20 +61,45 @@ class RoomConsumer(AsyncWebsocketConsumer):
             self.room_group_name,
             self.channel_name
         )
+        
+        query_string = self.scope['query_string'].decode()
+        # 유저의 구글 계정
+        self.google_account = parse_qs(query_string).get('google-account')[0]
+        print(self.google_account)
+        new_user = await self.get_user_by_account(self.google_account)
+        nickname = new_user.nickname
+        profile_image_url = new_user.profile_image_url
+        
+        await self.channel_layer.group_send(
+            self.room_group_name,
+            {
+                'type': 'member_enter',
+                'google_account': self.google_account,
+                'nickname': nickname,
+                'profile_image_url': profile_image_url,
+            }
+        )
 
         await self.accept()
 
         # 초기 큐 데이터 전송
-        initial_queue = await self.get_initial_queue()
+        # initial_queue = await self.get_initial_queue()
+        # await self.channel_layer.group_send(
+        #     self.room_group_name,
+        #     {
+        #         'type': 'initial_queue',
+        #         'queue': initial_queue
+        #     }
+        # )
+
+    async def disconnect(self, close_code):
         await self.channel_layer.group_send(
             self.room_group_name,
             {
-                'type': 'initial_queue',
-                'queue': initial_queue
+                'type': 'member_exit',
+                'google_account': self.google_account,
             }
         )
-
-    async def disconnect(self, close_code):
         await self.channel_layer.group_discard(
             self.room_group_name,
             self.channel_name
@@ -79,14 +107,10 @@ class RoomConsumer(AsyncWebsocketConsumer):
 
     @database_sync_to_async
     def get_initial_queue(self):
-        room = Room.objects.get(room_id=12)
+        room = Room.objects.get(room_id=int(self.room_name))
         subject_id = room.subject_id.subject_id
-        print(subject_id)
 
-        print("1")
         elements = list(Element.objects.filter(subject_id=subject_id))
-        print(elements)
-        print("2")
         random.shuffle(elements)
         elements_data = [{
             'element_id': element.element_id,
@@ -95,7 +119,11 @@ class RoomConsumer(AsyncWebsocketConsumer):
             'num_won': element.num_won
         } for element in elements]
         return elements_data
-
+    
+    @database_sync_to_async
+    def get_user_by_account(self, google_account):
+        return User.objects.get(google_account=google_account)
+        
     async def receive(self, text_data):
         data = json.loads(text_data)
         if data['type'] == 'message':
@@ -127,7 +155,29 @@ class RoomConsumer(AsyncWebsocketConsumer):
                     'queue': queue
                 }
             )
-
+        elif data['type'] == 'member_enter': 
+            google_account = data['google_account']
+            new_user = self.get_user_by_account(google_account)
+            nickname = new_user.nickname
+            profile_image_url = new_user.profile_image_url
+            await self.channel_layer.group_send(
+                self.room_group_name,
+                {
+                    'type': 'member_enter',
+                    'google_account': google_account,
+                    'nickname': nickname,
+                    'profile_image_url': profile_image_url,
+                }
+            )
+        elif data['type'] == 'member_exit':
+            await self.channel_layer.group_send(
+                self.room_group_name,
+                {
+                    'type': 'member_exit',
+                    'google_account': data['google_account'],
+                }
+            )
+            
     async def chat_message(self, event):
         await self.send(text_data=json.dumps({
             'type': 'message',
@@ -146,4 +196,18 @@ class RoomConsumer(AsyncWebsocketConsumer):
         await self.send(text_data=json.dumps({
             'type': 'initial_queue',
             'queue': event['queue']
+        }))
+    async def member_enter(self, event):
+        print("member_enter")
+        await self.send(text_data=json.dumps({
+            'type': 'member_enter',
+            'google_account': event['google_account'],
+            'nickname': event['nickname'],
+            'profile_image_url': event['profile_image_url'],
+        }))
+    async def member_exit(self, event):
+        print("member_exit")
+        await self.send(text_data=json.dumps({
+            'type': 'member_exit',
+            'google_account': event['google_account'],
         }))
