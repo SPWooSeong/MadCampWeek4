@@ -1,6 +1,7 @@
 import random
-from django.shortcuts import render
+from django.shortcuts import get_object_or_404
 from django.http import HttpResponse, JsonResponse
+from django.views.decorators.http import require_http_methods
 
 from rooms.models import Room
 from subjects.models import Element, Subject
@@ -81,3 +82,21 @@ def elements(request, room_id):
     } for element in elements]
     
     return JsonResponse(elements_data, safe=False)
+
+@require_http_methods(["PUT"])
+def increment_element_win(request, element_id):
+    # Retrieve the element by element_id
+    element = get_object_or_404(Element, element_id=element_id)
+    
+    # Increment the num_won field
+    element.num_won += 1
+    element.save()
+    
+    # Prepare the response data
+    response_data = {
+        "element_id": element.element_id,
+        "element_name": element.element_name,
+        "num_won": element.num_won
+    }
+    
+    return JsonResponse(response_data, status=200)
