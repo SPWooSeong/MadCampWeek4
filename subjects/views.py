@@ -107,10 +107,11 @@ def increment_element_win(request, element_id):
 @csrf_exempt
 @require_http_methods(["PUT"])
 def increment_subject(request, room_id):
-    print(room_id)
     room = get_object_or_404(Room, room_id=room_id)
     subject = room.subject_id
     
+    room.is_started = True
+    room.save()
     # Increment the num_won field
     subject.num_used += 1
     subject.save()
