@@ -85,6 +85,7 @@ def elements(request, room_id):
     
     return JsonResponse(elements_data, safe=False)
 
+@csrf_exempt
 @require_http_methods(["PUT"])
 def increment_element_win(request, element_id):
     # Retrieve the element by element_id
@@ -102,6 +103,19 @@ def increment_element_win(request, element_id):
     }
     
     return JsonResponse(response_data, status=200)
+
+@csrf_exempt
+@require_http_methods(["PUT"])
+def increment_subject(request, room_id):
+    print(room_id)
+    room = get_object_or_404(Room, room_id=room_id)
+    subject = room.subject_id
+    
+    # Increment the num_won field
+    subject.num_used += 1
+    subject.save()
+    
+    return JsonResponse({'message': 'Number of subject used incremented successfully'}, status=200)
 
 @csrf_exempt
 def new_subject(request):
