@@ -147,12 +147,12 @@ class RoomConsumer(AsyncWebsocketConsumer):
                 }
             )
         elif data['type'] == 'initial_queue':
-            queue = data['queue']
+            initial_queue = await self.get_initial_queue()
             await self.channel_layer.group_send(
                 self.room_group_name,
                 {
                     'type': 'initial_queue',
-                    'queue': queue
+                    'queue': initial_queue
                 }
             )
         elif data['type'] == 'member_enter': 
