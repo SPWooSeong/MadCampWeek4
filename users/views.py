@@ -19,7 +19,7 @@ def google_login_callback(request):
         id_token_str = data.get('id_token')
 
         try:
-            idinfo = id_token.verify_oauth2_token(id_token_str, requests.Request(), settings.GOOGLE_CLIENT_ID)
+            idinfo = id_token.verify_oauth2_token(id_token_str, requests.Request(), settings.GOOGLE_CLIENT_ID, clock_skew_in_seconds=10)
 
             # 사용자 정보 가져오기
             username = idinfo.get('name')
