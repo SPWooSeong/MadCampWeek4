@@ -8,5 +8,6 @@ urlpatterns = [
     path("subject-list/", views.subject_list, name="subject_list"),
     path("elements/<int:room_id>/", views.elements, name="elements"),
     path('winner/<int:element_id>/', views.increment_element_win, name='increment_element_win'),
+    path('num-used/<int:room_id>/', views.increment_subject, name='increment_subject'),
     path('new-subject/', views.new_subject, name='new_subject'),
 ]

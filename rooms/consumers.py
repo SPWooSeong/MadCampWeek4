@@ -1,47 +1,3 @@
-# import json
-# from channels.generic.websocket import AsyncWebsocketConsumer
-
-# class ChatConsumer(AsyncWebsocketConsumer):
-#     async def connect(self):
-#         self.room_name = self.scope['url_route']['kwargs']['room_name']
-#         self.room_group_name = f'chat_{self.room_name}'
-
-#         await self.channel_layer.group_add(
-#             self.room_group_name,
-#             self.channel_name
-#         )
-
-#         await self.accept()
-
-#     async def disconnect(self, close_code):
-#         await self.channel_layer.group_discard(
-#             self.room_group_name,
-#             self.channel_name
-#         )
-
-#     async def receive(self, text_data):
-#         data = json.loads(text_data)
-#         message = data['message']
-#         username = data['username']
-
-#         await self.channel_layer.group_send(
-#             self.room_group_name,
-#             {
-#                 'type': 'chat_message',
-#                 'message': message,
-#                 'username': username,
-#             }
-#         )
-
-#     async def chat_message(self, event):
-#         message = event['message']
-#         username = event['username']
-
-#         await self.send(text_data=json.dumps({
-#             'message': message,
-#             'username': username,
-#         }))
-
 import json
 from channels.generic.websocket import AsyncWebsocketConsumer
 from channels.db import database_sync_to_async
@@ -56,6 +12,8 @@ class RoomConsumer(AsyncWebsocketConsumer):
     async def connect(self):
         self.room_name = self.scope['url_route']['kwargs']['room_name']
         self.room_group_name = f'chat_{self.room_name}'
+        self.current_vote = [0, 0]
+        self.users_voted = []
 
         await self.channel_layer.group_add(
             self.room_group_name,
@@ -82,16 +40,6 @@ class RoomConsumer(AsyncWebsocketConsumer):
 
         await self.accept()
 
-        # 초기 큐 데이터 전송
-        # initial_queue = await self.get_initial_queue()
-        # await self.channel_layer.group_send(
-        #     self.room_group_name,
-        #     {
-        #         'type': 'initial_queue',
-        #         'queue': initial_queue
-        #     }
-        # )
-
     async def disconnect(self, close_code):
         await self.channel_layer.group_send(
             self.room_group_name,
@@ -104,12 +52,15 @@ class RoomConsumer(AsyncWebsocketConsumer):
             self.room_group_name,
             self.channel_name
         )
+        
+    @database_sync_to_async
+    def get_room(self):
+        return Room.objects.get(room_id=int(self.room_name))
 
     @database_sync_to_async
     def get_initial_queue(self):
         room = Room.objects.get(room_id=int(self.room_name))
         subject_id = room.subject_id.subject_id
-
         elements = list(Element.objects.filter(subject_id=subject_id))
         random.shuffle(elements)
         elements_data = [{
@@ -177,6 +128,19 @@ class RoomConsumer(AsyncWebsocketConsumer):
                     'google_account': data['google_account'],
                 }
             )
+        elif data['type'] == 'vote':
+            user = data['user']
+            select = data['select']
+            if not (user in self.users_voted):
+                await self.channel_layer.group_send(
+                    self.room_group_name,
+                    {
+                        'type': 'vote',
+                        'user': user,
+                        'select': select,
+                        'random': random.choice(['left', 'right'])
+                    }
+                )
             
     async def chat_message(self, event):
         await self.send(text_data=json.dumps({
@@ -211,3 +175,31 @@ class RoomConsumer(AsyncWebsocketConsumer):
             'type': 'member_exit',
             'google_account': event['google_account'],
         }))
+    async def vote(self, event):
+        print("vote")
+        user = event['user']
+        if user not in self.users_voted:
+            self.users_voted.append(user)
+            index = 0 if event['select'] == 'left' else 1
+            self.current_vote[index] += 1
+            await self.send(text_data=json.dumps({
+                'type': 'vote',
+                'left': self.current_vote[0],
+                'right': self.current_vote[1],
+            }))
+            current_users_voted = sum(self.current_vote)
+            room = await self.get_room()
+            if (current_users_voted >= room.current_people):
+                # vote end
+                if self.current_vote[0] > self.current_vote[1]:
+                    result = 'left'
+                elif self.current_vote[0] < self.current_vote[1]:
+                    result = 'right'
+                else:
+                    result = event['random']
+                self.current_vote = [0, 0]
+                self.users_voted = []
+                await self.send(text_data=json.dumps({
+                    'type': 'vote_end',
+                    'result': result,
+                }))
