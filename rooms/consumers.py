@@ -46,6 +46,7 @@ class RoomConsumer(AsyncWebsocketConsumer):
             {
                 'type': 'member_exit',
                 'google_account': self.google_account,
+                'random': random.choice(['left', 'right'])
             }
         )
         await self.channel_layer.group_discard(
@@ -126,6 +127,7 @@ class RoomConsumer(AsyncWebsocketConsumer):
                 {
                     'type': 'member_exit',
                     'google_account': data['google_account'],
+                    'random': data['random']
                 }
             )
         elif data['type'] == 'vote':
@@ -175,6 +177,23 @@ class RoomConsumer(AsyncWebsocketConsumer):
             'type': 'member_exit',
             'google_account': event['google_account'],
         }))
+        current_users_voted = sum(self.current_vote)
+        room = await self.get_room()
+        if (current_users_voted >= room.current_people):
+            # vote end
+            if self.current_vote[0] > self.current_vote[1]:
+                result = 'left'
+            elif self.current_vote[0] < self.current_vote[1]:
+                result = 'right'
+            else:
+                result = event['random']
+            self.current_vote = [0, 0]
+            self.users_voted = []
+            await self.send(text_data=json.dumps({
+                'type': 'vote_end',
+                'result': result,
+            }))
+            
     async def vote(self, event):
         print("vote")
         user = event['user']
